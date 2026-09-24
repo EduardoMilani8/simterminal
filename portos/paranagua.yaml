@@ -1,0 +1,40 @@
+# Porto de Paranaguá (PR), a partir das atracações da ANTAQ.
+# Os grupos juntam berços que disputam os mesmos navios; saíram da
+# carga que cada berço movimentou em 2024 (simterminal porto bercos).
+porto: Paranaguá
+dados: ../dados/antaq
+anos: [2022, 2023, 2024, 2025]  # 2022: histórico da previsão; 2025 (até junho): quem chegou no fim de 2024
+periodo: {inicio: 2024-01-01, fim: 2025-01-01}
+treino:  {inicio: 2023-01-01, fim: 2024-01-01}
+# custo_navio_dia_usd: 25000  # opcional: preencha com o custo de um dia parado do seu navio
+
+grupos:
+  - nome: Corredor Leste (grãos)
+    bercos: [PNG0212, PNG0213, PNG0214]   # soja e farelo
+  - nome: Corredor Oeste
+    bercos: [PNG0201]                     # soja, farelo, fertilizante
+  - nome: Fertilizantes
+    bercos: [PNG0208, PNG0209, PNG0211]
+  - nome: Píer da Fospar
+    bercos: [PNG0200]                     # fertilizante; comporta dois navios
+  - nome: Açúcar (204)
+    bercos: [PNG0204]                     # 90% açúcar
+  - nome: Cais público 202/205
+    bercos: [PNG0202, PNG0205]            # açúcar, celulose, carga geral
+  - nome: Contêineres (TCP)
+    bercos: [PNG0216, PNG0218]
+  - nome: Cais público (veículos)
+    bercos: [PNG0215, PNG5022]
+  - nome: Granéis líquidos
+    bercos: [PNG0141, PNG0142]
+
+cenarios:
+  - nome: fila única no grupo
+    alocacao: compartilhada
+  - nome: + 1 berço
+    alocacao: compartilhada
+    bercos_extra: 1
+  - nome: operação 10% mais rápida
+    operacao: 0.9
+  - nome: metade do tempo ocioso no berço
+    ocioso: 0.5
