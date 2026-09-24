@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/eduardomilani8/simterminal/internal/des"
-	"github.com/eduardomilani8/simterminal/internal/stats"
 )
 
 // Demo do dia 1: uma balança só, caminhões chegando ao longo de um turno.
@@ -27,41 +26,13 @@ func main() {
 		e.SetTrace(os.Stdout)
 	}
 
-	var (
-		fila      []float64
-		ocupada   bool
-		espera    stats.Series
-		filaMax   int
-		emUso     float64
-		inicioUso float64
-	)
-
-	var atende func()
-	atende = func() {
-		if len(fila) == 0 {
-			ocupada = false
-			emUso += e.Now() - inicioUso
-			return
-		}
-		if !ocupada {
-			inicioUso = e.Now()
-		}
-		chegouEm := fila[0]
-		fila = fila[1:]
-		ocupada = true
-		espera.Add(e.Now() - chegouEm)
-		e.ScheduleIn(e.Triangular(*service*0.6, *service, *service*2.2), "fim da pesagem", atende)
-	}
+	balanca := des.NewResource(e, "balança", 1)
 
 	var chega func()
 	chega = func() {
-		fila = append(fila, e.Now())
-		if len(fila) > filaMax {
-			filaMax = len(fila)
-		}
-		if !ocupada {
-			atende()
-		}
+		balanca.Request(func(release func()) {
+			e.ScheduleIn(e.Triangular(*service*0.6, *service, *service*2.2), "fim da pesagem", release)
+		})
 		if e.Now() < *horizon {
 			e.ScheduleIn(e.Exponential(*interval), "chegada", chega)
 		}
@@ -72,10 +43,11 @@ func main() {
 
 	fmt.Printf("turno de %.0f min | semente %d | %d eventos processados\n\n",
 		*horizon, *seed, e.EventsProcessed())
+	espera := balanca.Waits()
 	fmt.Printf("caminhões pesados      %d\n", espera.N())
 	fmt.Printf("espera média na fila   %.1f min\n", espera.Mean())
 	fmt.Printf("espera p95             %.1f min\n", espera.Percentile(95))
 	fmt.Printf("pior espera            %.1f min\n", espera.Max())
-	fmt.Printf("fila máxima            %d caminhões\n", filaMax)
-	fmt.Printf("utilização da balança  %.0f%%\n", emUso/e.Now()*100)
+	fmt.Printf("fila máxima            %d caminhões\n", balanca.MaxQueue())
+	fmt.Printf("utilização da balança  %.0f%%\n", balanca.Utilization()*100)
 }

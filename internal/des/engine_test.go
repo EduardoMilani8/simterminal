@@ -43,7 +43,23 @@ func TestMM1MatchesAnalyticFormula(t *testing.T) {
 		nCustomers       = 300_000
 	)
 
-	e := New(42)
+	gotWq := mm1Manual(42, meanInterarrival, meanService, nCustomers)
+
+	lambda := 1 / meanInterarrival
+	mu := 1 / meanService
+	rho := lambda / mu
+	wantWq := rho / (mu - lambda)
+
+	if rel := math.Abs(gotWq-wantWq) / wantWq; rel > 0.05 {
+		t.Errorf("espera média simulada = %.2f min, fórmula = %.2f min (erro %.1f%%)",
+			gotWq, wantWq, rel*100)
+	}
+}
+
+// mm1Manual simula uma M/M/1 controlando fila e servidor na mão, sem
+// Resource, e devolve a espera média na fila.
+func mm1Manual(seed int64, meanInterarrival, meanService float64, nCustomers int) float64 {
+	e := New(seed)
 
 	var (
 		queue      []float64 // instantes de chegada dos que estão esperando
@@ -82,14 +98,5 @@ func TestMM1MatchesAnalyticFormula(t *testing.T) {
 	e.ScheduleAt(0, "chegada", arrive)
 	e.Run(0)
 
-	lambda := 1 / meanInterarrival
-	mu := 1 / meanService
-	rho := lambda / mu
-	wantWq := rho / (mu - lambda)
-	gotWq := totalWait / float64(nCompleted)
-
-	if rel := math.Abs(gotWq-wantWq) / wantWq; rel > 0.05 {
-		t.Errorf("espera média simulada = %.2f min, fórmula = %.2f min (erro %.1f%%)",
-			gotWq, wantWq, rel*100)
-	}
+	return totalWait / float64(nCompleted)
 }
