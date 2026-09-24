@@ -1,0 +1,21 @@
+# Terminal hoje: uma balança de cada lado e 12 docas.
+#
+# Por que 12 e não 3 docas como no mapa: com esses tempos de descarga
+# (média ~43 min, meio a meio granel/paletizada) e ~149 caminhões/dia,
+# 3 docas atendem no máximo ~50 caminhões em 12 h. Com 12 docas elas
+# ficam em ~75% de uso, e o gargalo passa a ser o que o mapa descreve:
+# a balança única de uns quatro minutos.
+nome: atual
+horizonte_min: 720        # o portão recebe caminhões por 12 h
+replicas: 30
+warmup_min: 60            # a primeira hora não entra na estatística
+chegadas:
+  perfil_horario: [4, 12, 28, 31, 22, 15, 9, 6, 6, 8, 5, 3]   # caminhões/hora
+recursos:
+  balanca_entrada: 1
+  balanca_saida: 1        # 0 = a mesma balança faz entrada e saída
+  docas: 12
+pesagem: {min: 3, moda: 4, max: 7}
+descarga:
+  granel:     {min: 35, moda: 48, max: 95}
+  paletizada: {min: 18, moda: 25, max: 40}

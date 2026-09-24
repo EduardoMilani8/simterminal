@@ -1,0 +1,17 @@
+# Atual com uma balança a mais na entrada e outra na saída. Só a de
+# entrada não basta: o gargalo pula para a saída, que está tão carregada
+# quanto.
+nome: + 1 balança cada lado
+horizonte_min: 720        # o portão recebe caminhões por 12 h
+replicas: 30
+warmup_min: 60            # a primeira hora não entra na estatística
+chegadas:
+  perfil_horario: [4, 12, 28, 31, 22, 15, 9, 6, 6, 8, 5, 3]   # caminhões/hora
+recursos:
+  balanca_entrada: 2
+  balanca_saida: 2
+  docas: 12
+pesagem: {min: 3, moda: 4, max: 7}
+descarga:
+  granel:     {min: 35, moda: 48, max: 95}
+  paletizada: {min: 18, moda: 25, max: 40}

@@ -1,0 +1,18 @@
+# Atual, mas com metade dos caminhões vindo com hora marcada. Os
+# agendados são espalhados ao longo do dia, achatando o pico da manhã.
+nome: 50% agendado
+horizonte_min: 720        # o portão recebe caminhões por 12 h
+replicas: 30
+warmup_min: 60            # a primeira hora não entra na estatística
+chegadas:
+  perfil_horario: [4, 12, 28, 31, 22, 15, 9, 6, 6, 8, 5, 3]   # caminhões/hora
+  agendados: 0.5          # fração com hora marcada
+  tolerancia_min: 15      # adianta ou atrasa até 15 min do horário
+recursos:
+  balanca_entrada: 1
+  balanca_saida: 1        # 0 = a mesma balança faz entrada e saída
+  docas: 12
+pesagem: {min: 3, moda: 4, max: 7}
+descarga:
+  granel:     {min: 35, moda: 48, max: 95}
+  paletizada: {min: 18, moda: 25, max: 40}
