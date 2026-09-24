@@ -4,6 +4,7 @@
 //	simterminal run -c exemplos/atual.yaml
 //	simterminal compare exemplos/atual.yaml exemplos/maisbalanca.yaml exemplos/maisdoca.yaml
 //	simterminal demo -trace
+//	simterminal porto diagnostico -c portos/paranagua.yaml
 package main
 
 import (
@@ -23,11 +24,15 @@ uso:
   simterminal run -c CENARIO.yaml [-replicas N] [-semente S] [-csv ARQ] [-caminhoes ARQ]
   simterminal compare CENARIO.yaml... [-replicas N] [-semente S] [-csv ARQ]
   simterminal demo [-trace] [-intervalo MIN] [-pesagem MIN] [-horizonte MIN] [-seed S]
+  simterminal porto COMANDO ...
 
 run       roda um cenário e mostra tempo no terminal, filas e o gargalo
 compare   roda vários cenários com as mesmas sementes e monta a tabela de
           decisão; o primeiro é a referência das diferenças
 demo      a demo do motor: uma balança, um turno
+porto     fila de navios com os dados reais da ANTAQ: diagnóstico, cenários,
+          capacidade, previsão de espera e chegada just-in-time
+          (simterminal porto, sem argumentos, lista os comandos)
 
 Exemplos de cenário em exemplos/.
 `
@@ -48,6 +53,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return cmdCompare(args[1:], stdout, stderr)
 	case "demo":
 		return cmdDemo(args[1:], stdout, stderr)
+	case "porto":
+		return cmdPorto(args[1:], stdout, stderr)
 	case "-h", "-help", "--help", "help":
 		fmt.Fprint(stdout, usage)
 		return 0
