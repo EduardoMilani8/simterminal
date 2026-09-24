@@ -1,4 +1,4 @@
-.PHONY: test vet build run compare demo
+.PHONY: test vet build run compare demo dados porto
 
 test:
 	go test ./...
@@ -19,3 +19,10 @@ compare:
 
 demo:
 	go run ./cmd/simterminal demo
+
+dados:
+	go run ./cmd/simterminal porto baixar -carga
+
+porto:
+	go run ./cmd/simterminal porto diagnostico -c portos/paranagua.yaml
+	go run ./cmd/simterminal porto cenarios -c portos/paranagua.yaml

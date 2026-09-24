@@ -121,16 +121,109 @@ O caminhão passa por `chegada → fila do pátio → balança de entrada → do
 - **Gargalo** é o recurso onde os caminhões mais esperam, em média.
 - **Saturação**: se a carga oferecida de um recurso passa de 100%, o cenário é marcado como saturado em vez de mostrar uma média que só reflete o horizonte.
 
+## Portos: fila de navios com dados reais
+
+`simterminal porto` troca a simulação com números inventados por um **replay do ano real**. Os dados são as atracações públicas da [ANTAQ](https://www.gov.br/antaq/pt-br/central-de-conteudos/publicacoes-da-antaq/estatisticos-aquaviarios) (Estatístico Aquaviário): para cada navio, a hora em que chegou ao fundeadouro, atracou, começou e terminou de operar e desatracou, em cada berço de cada porto do Brasil.
+
+Nada é sorteado. As chegadas, a ordem em que os navios atracaram (o *line-up* do porto) e o tempo de cada um no berço vêm do dado. O cenário muda só o que ele diz mudar — um berço a mais, operação mais rápida, navio chamado na hora certa — e o resto do ano acontece como aconteceu.
+
+### Rodando
+
+```bash
+simterminal porto baixar                       # ~20 MB: atracações de 2022 a jun/2025
+simterminal porto baixar -carga                # + tabela de carga (~400 MB/ano), para saber a mercadoria
+simterminal porto bercos -porto Santos         # berços de um porto e o que cada um movimenta
+simterminal porto diagnostico -c portos/paranagua.yaml
+simterminal porto cenarios    -c portos/paranagua.yaml
+simterminal porto capacidade  -c portos/paranagua.yaml -meta 5d
+simterminal porto previsao    -c portos/paranagua.yaml
+simterminal porto chegada     -c portos/paranagua.yaml -grupo "Fertilizantes"
+```
+
+O site da ANTAQ bloqueia download automático (Cloudflare). `baixar` usa o espelho dos mesmos arquivos publicado com Pacheco et al., *Methodological Pitfalls in Predicting Ship Turnaround Time at Brazilian Ports*, IEEE T-ITS 2026 ([doi:10.5281/zenodo.20549161](https://doi.org/10.5281/zenodo.20549161), CC-BY-4.0), lendo só as tabelas necessárias de dentro do zip de 5,5 GB. Quem baixar à mão do site da ANTAQ pode apontar `dados:` no YAML para a pasta: o formato é o mesmo.
+
+### O arquivo do porto
+
+```yaml
+porto: Paranaguá                  # como a ANTAQ grafa em "Porto Atracação"
+dados: ../dados/antaq
+anos: [2022, 2023, 2024, 2025]
+periodo: {inicio: 2024-01-01, fim: 2025-01-01}   # o que se analisa
+treino:  {inicio: 2023-01-01, fim: 2024-01-01}   # onde a previsão escolhe o método
+# custo_navio_dia_usd: 25000      # opcional: põe a espera em dinheiro
+grupos:                           # berços que disputam os mesmos navios
+  - nome: Corredor Leste (grãos)
+    bercos: [PNG0212, PNG0213, PNG0214]
+cenarios:
+  - nome: + 1 berço
+    alocacao: compartilhada       # por_berco (padrão) | compartilhada | fixa
+    bercos_extra: 1
+  - nome: operação 10% mais rápida
+    operacao: 0.9                 # multiplica o tempo operando
+  - nome: metade do tempo ocioso no berço
+    ocioso: 0.5                   # multiplica o tempo atracado sem operar
+```
+
+`simterminal porto bercos` mostra a carga de cada berço para montar os grupos.
+
+### O que Paranaguá mostrou em 2024
+
+```
+  grupo                    berços  navios  espera mediana  p90     navio-dias  ocupação  berço cheio*  ultrapassados
+  Corredor Leste (grãos)   3       315     11,9 d          28,4 d  4.365       91%       79%           62%
+  Fertilizantes            3       204     14,3 d          37,4 d  3.497       92%       89%           44%
+  Açúcar (204)             1       141     16,3 d          27,5 d  2.397       92%       92%           43%
+  Contêineres (TCP)        2       792     20 h            3,9 d   4.331       82%       70%           41%
+  Granéis líquidos         2       266     2,0 d           10,3 d  1.109       37%       1%            42%
+```
+
+- **Grãos, fertilizantes e açúcar esperam por berço.** Ocupação acima de 90% e, durante a espera, todos os berços cheios em 80–90% do tempo. Aqui mais capacidade reduz a fila.
+- **Nos granéis líquidos a espera não é falta de berço.** Mediana de 2 dias com os berços livres em 99% desse tempo: o navio espera carga, tanque ou documento. Um berço a mais não mudaria nada — o tipo de conclusão que só o dado mostra.
+- **A fila não é por ordem de chegada.** 62% dos navios de grãos viram alguém que chegou depois atracar antes. Muitos chegam antes de a carga estar pronta, e o dado não diz quando ficou. Por isso todo cenário sai como faixa entre duas leituras (abaixo).
+- **Fila virtual reduz metade do fundeio sem atrasar a atracação.** Com a reserva certa (ver `chegada`), o tempo parado no fundeadouro cai 54% nos fertilizantes, 67% nos grãos e 75% no açúcar, e a atracação atrasa de 2 a 4 horas em média.
+- **Marcar hora pela previsão não funciona.** A melhor previsão de espera erra 3 a 6 dias (mediana) em esperas de 12 a 16. Navio que chega na hora prevista atrasa a própria atracação em 5 a 13 dias.
+
+### Os comandos
+
+| Comando | Pergunta | Como responde |
+|---|---|---|
+| `diagnostico` | Qual o problema de cada grupo de berços? | Só o dado, sem simular: espera, ocupação, **berço cheio** (fração da espera com todos os berços ocupados — separa fila de berço de espera por outro motivo), ultrapassagens, tempo ocioso no berço. |
+| `cenarios` | E se abrir um berço, fizer fila única, operar mais rápido, cortar o tempo ocioso? | Replay com a mudança, comparado com o mesmo replay sem mudança. |
+| `capacidade` | Quantos navios por mês dá para aceitar na agenda sem a espera passar da meta? | Os mesmos navios chegando mais juntos ou mais espaçados, até a espera mediana cruzar a meta. Mostra a curva: a espera explode perto do limite. |
+| `previsao` | Quanto este navio vai esperar, dito na hora em que chega? | Três métodos (mediana recente, fila ÷ vazão, regressão móvel de 12 meses), só com o que se sabia na chegada. O método de cada grupo é escolhido no treino e medido no período. |
+| `chegada` | Vale instruir o navio a não vir para o fundeadouro? | Hora marcada pela previsão contra fila virtual com chamada (o pátio regulador dos navios), no replay por berço. |
+
+O quinto problema da lista original — dimensionar equipe por turno — não está nos dados da ANTAQ. O mais perto que o dado permite é o tempo atracado sem operar (esperando começar e esperando sair), que é o cenário `ocioso`.
+
+### Como o replay funciona
+
+- **Estado inicial real.** O período começa com quem estava de fato no berço e no fundeadouro naquele instante. Começar com a fila vazia subestima a espera por meses: com berço a 90%, a folga para desfazer uma fila acumulada é de 10% da capacidade.
+- **Posições por berço.** O menor número de navios simultâneos que cobre 98% do tempo ocupado: 1 na maioria, 2 nos píeres com dois lados. O máximo não serve: uma sobreposição de minutos, erro de registro, dobraria o berço.
+- **Manobra e prontidão.** Entre um navio sair e o próximo atracar há canal, maré e prático — o intervalo típico com fila é de 2 h. Até o percentil 90 desse intervalo, conta como manobra e se repete em qualquer cenário; acima, o navio não estava pronto.
+- **Duas leituras de prontidão.** *Otimista*: o navio estava pronto ao chegar. *Conservadora*: só depois de atracar o último que o ultrapassou. O efeito real fica entre as duas. Com a leitura conservadora, o modelo por berço fica a menos de 5% da espera média real na maioria dos grupos (Leste 329 h contra 333 h; TCP 131 h contra 131 h); o maior desvio é no açúcar, 16% abaixo.
+- **Alocação.** `por_berco` (padrão): cada navio no berço em que atracou, e o berço atende o primeiro pronto da sua fila na ordem do *line-up*. `compartilhada`: fila única, qualquer berço do grupo. `fixa`: cada berço repete a sequência real à risca — reproduz o ano exatamente, mas só vale para mudanças pequenas: esticando o tempo, o berço fica esperando um navio que agora chega semanas depois dos outros.
+
+### Limites
+
+- O dado não diz quando o navio ficou pronto; daí as faixas. Faixa larga não é defeito do modelo, é o tamanho do que não se sabe.
+- A previsão erra em dias, não em horas. Serve para planejar, não para marcar hora.
+- Grupos de berços são decisão de quem conhece o porto: `compartilhada` supõe que qualquer navio do grupo cabe em qualquer berço dele (calado, comprimento, equipamento).
+- Custo de espera, frete e combustível não estão no dado. `custo_navio_dia_usd` é do usuário.
+
 ## Estrutura
 
 ```
-cmd/simterminal/     CLI: run, compare, demo
+cmd/simterminal/     CLI: run, compare, demo, porto
 internal/des/        motor: relógio, fila de eventos, recursos, fluxos aleatórios, thinning
+internal/antaq/      leitura dos arquivos da ANTAQ e download do espelho
+internal/porto/      navios, replay, diagnóstico, capacidade, previsão, chegada
 internal/stats/      métricas: média, p95, média no tempo, intervalo de confiança
 internal/terminal/   domínio: caminhão, chegadas, balanças, docas
 internal/scenario/   leitura do YAML, réplicas, resumo, gargalo
 internal/report/     tabela no terminal e CSV
 exemplos/            cenários prontos
+portos/              arquivos de porto (Paranaguá)
+dados/               dados baixados (fora do git)
 ```
 
 `des` não sabe o que é um caminhão: o mesmo motor serve para pronto-socorro ou linha de produção.
@@ -151,6 +244,15 @@ Simulação é o tipo de software que mente com elegância: o resultado sempre p
 | IC de 95% cobre a média verdadeira ~95% das vezes | `TestMeanCICoverage` |
 | meia-largura do IC cai com `1/√R` | `TestHalfWidthShrinksWithSqrtR` |
 | mesmas sementes estreitam o IC da diferença | `TestCommonRandomNumbersShrinkDiffCI` |
+| replay sem mudança reproduz **exatamente** cada navio de Paranaguá 2024, nas duas leituras | `TestReplayReproduzOReal` |
+| berço a mais e operação mais rápida nunca pioram a espera | `TestBercoExtraNaoPiora`, `TestOperacaoMaisRapidaNaoPiora` |
+| em qualquer cenário, ninguém atraca antes de chegar nem passa das posições do berço | `TestInvariantesDoReplay` |
+| fila virtual sem limite e sem antecedência é idêntica a não ter fila virtual | `TestChamadaSemLimiteEhOMesmoQueSemChamada` |
+| a previsão na chegada não muda quando o futuro muda | `TestPrevisaoNaoOlhaOFuturo` |
+| sobreposição de minutos no registro não vira mais uma posição | `TestSobreposicaoCurtaNaoViraPosicao` |
+| leitor aceita BOM, CRLF, `;` entre aspas e "Valor Discrepante" | `TestCarregar` |
+
+Os testes com dados de Paranaguá rodam se `dados/antaq` existir e são pulados sem ele. A CLI é testada de ponta a ponta com um porto sintético no formato da ANTAQ (`TestCLIPorto`).
 
 ## Roadmap
 
@@ -165,7 +267,8 @@ Depois do MVP:
 - [x] identificação automática de gargalo
 - [x] agendamento de janelas (`agendados`)
 - [ ] turnos e paradas — almoço, troca de turno, manutenção
-- [ ] calibração com dado real — ajustar as distribuições a um CSV de movimentação
+- [x] dado real — replay de portos com as atracações da ANTAQ (`simterminal porto`)
+- [ ] calibração do terminal de caminhões com dado real — ajustar as distribuições a um CSV de balança
 - [ ] visualização — fila vs. hora, ou animação do pátio
 
 ## Licença
