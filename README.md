@@ -45,7 +45,7 @@ Flags: `-seed`, `-horizonte`, `-intervalo`, `-pesagem`, `-trace`.
 - [x] **Dia 1** — motor DES puro, validado contra M/M/1
 - [x] **Dia 2** — abstração de recurso (capacidade N, fila FIFO, estatística de ocupação)
 - [x] **Dia 3** — modelo do terminal: chegadas com perfil por hora, tipos de carga, balança + docas
-- [ ] **Dia 4** — múltiplas réplicas com sementes diferentes, média e intervalo de confiança
+- [x] **Dia 4** — múltiplas réplicas com sementes diferentes, média e intervalo de confiança
 - [ ] **Dia 5** — cenários declarados em arquivo de configuração e saída comparativa
 
 ## Licença
