@@ -37,9 +37,10 @@ func WriteRun(w io.Writer, s *scenario.Summary) {
 		return name + strings.Repeat(" ", nameWidth-utf8.RuneCountInString(name))
 	}
 	tw = tabwriter.NewWriter(w, 0, 0, 2, ' ', tabwriter.AlignRight)
-	fmt.Fprintf(tw, "  %s\tcap.\tcarga\tutilização\tespera média\tfila máx.\t\n", pad("recurso"))
+	// com AlignRight o tabwriter já põe o padding de 2 à esquerda
+	fmt.Fprintf(tw, "%s\tcap.\tcarga\tutilização\tespera média\tfila máx.\t\n", pad("recurso"))
 	for _, r := range s.Resources {
-		fmt.Fprintf(tw, "  %s\t%d\t%s\t%s\t%s\t%s\t\n", pad(r.Name), r.Capacity, Percent(r.OfferedLoad),
+		fmt.Fprintf(tw, "%s\t%d\t%s\t%s\t%s\t%s\t\n", pad(r.Name), r.Capacity, Percent(r.OfferedLoad),
 			PercentCI(r.Utilization), DurationCI(r.MeanWait), CountCI(r.MaxQueue))
 	}
 	tw.Flush()
