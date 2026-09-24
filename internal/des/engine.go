@@ -16,7 +16,9 @@ type Engine struct {
 	now    float64
 	queue  eventQueue
 	seq    int
+	seed   int64
 	rng    *rand.Rand
+	main   *Stream
 	trace  io.Writer
 	ran    int
 	halted bool
@@ -26,7 +28,8 @@ type Engine struct {
 // sequência de números aleatórios, mesmo resultado — indispensável para
 // comparar cenários e para depurar.
 func New(seed int64) *Engine {
-	e := &Engine{rng: rand.New(rand.NewSource(seed))}
+	e := &Engine{seed: seed, rng: rand.New(rand.NewSource(seed))}
+	e.main = &Stream{rng: e.rng}
 	heap.Init(&e.queue)
 	return e
 }
@@ -35,8 +38,23 @@ func New(seed int64) *Engine {
 func (e *Engine) Now() float64 { return e.now }
 
 // Rand expõe o gerador do motor. Todo sorteio da simulação deve sair
-// daqui, nunca do rand global, ou a reprodutibilidade se perde.
+// daqui ou de um Stream, nunca do rand global, ou a reprodutibilidade
+// se perde.
 func (e *Engine) Rand() *rand.Rand { return e.rng }
+
+// Seed devolve a semente com que o motor foi criado.
+func (e *Engine) Seed() int64 { return e.seed }
+
+// Stream devolve um gerador independente, identificado por nome e
+// derivado da semente do motor. Mesmo nome e mesma semente, mesma
+// sequência — seja qual for a ordem em que os outros sorteios acontecem.
+//
+// É isso que faz common random numbers funcionar: se chegadas e tempos
+// de serviço saem de fluxos separados, abrir uma balança a mais não
+// muda os caminhões que chegam nem quanto cada um demora.
+func (e *Engine) Stream(name string) *Stream {
+	return NewStream(e.seed, name)
+}
 
 // EventsProcessed devolve quantos eventos já foram executados.
 func (e *Engine) EventsProcessed() int { return e.ran }
